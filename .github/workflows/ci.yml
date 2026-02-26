@@ -40,7 +40,7 @@ jobs:
             pkg-config libclang-dev \
             xvfb \
             libxcb1-dev libxrandr-dev libxi-dev \
-            libwayland-dev libxkbcommon-dev libegl-dev libgbm-dev \
+            libwayland-dev libxkbcommon-dev libxkbcommon-x11-dev libegl-dev libgbm-dev \
             libasound2-dev libudev-dev \
             libvulkan-dev mesa-vulkan-drivers \
             libdbus-1-dev libpipewire-0.3-dev
