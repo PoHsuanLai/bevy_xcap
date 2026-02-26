@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    name: Check & Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config libclang-dev \
+            libxcb1-dev libxrandr-dev \
+            libwayland-dev libegl-dev \
+            libdbus-1-dev libpipewire-0.3-dev
+      - run: cargo check
+      - run: cargo clippy -- -D warnings
+
+  capture-test:
+    name: Native capture (xvfb)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config libclang-dev \
+            xvfb \
+            libxcb1-dev libxrandr-dev libxi-dev \
+            libwayland-dev libxkbcommon-dev libegl-dev \
+            libasound2-dev libudev-dev \
+            libvulkan-dev mesa-vulkan-drivers \
+            libdbus-1-dev libpipewire-0.3-dev
+
+      - name: Build ci_capture example
+        run: cargo build --example ci_capture
+
+      - name: Run native capture test under xvfb
+        run: |
+          xvfb-run -a -s "-screen 0 1024x768x24" \
+            cargo run --example ci_capture
+          test -s ./ci_screenshot_test.png
+          echo "Screenshot captured successfully: $(stat -c%s ./ci_screenshot_test.png) bytes"
+
+      - name: Upload screenshot artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-screenshot
+          path: ./ci_screenshot_test.png
+          if-no-files-found: warn

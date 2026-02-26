@@ -2,9 +2,26 @@
 name = "bevy_xcap"
 version = "0.1.0"
 edition = "2021"
+description = "Bevy plugin for native window pixel capture via xcap"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/PoHsuanLai/bevy_xcap"
+readme = "README.md"
+keywords = ["bevy", "screenshot", "capture", "xcap", "native"]
+categories = ["game-development", "multimedia::images"]
 
 [dependencies]
 bevy = { version = "0.17", default-features = false, features = ["bevy_window", "bevy_log"] }
 xcap = "0.8"
 image = "0.25"
 raw-window-handle = "0.6"
+
+[dev-dependencies]
+bevy = { version = "0.17", features = ["bevy_winit", "bevy_render", "x11", "wayland"] }
+
+[[example]]
+name = "screenshot"
+path = "examples/screenshot.rs"
+
+[[example]]
+name = "ci_capture"
+path = "examples/ci_capture.rs"
