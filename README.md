@@ -1,5 +1,10 @@
 # bevy_xcap
 
+[![CI](https://github.com/PoHsuanLai/bevy_xcap/actions/workflows/ci.yml/badge.svg)](https://github.com/PoHsuanLai/bevy_xcap/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/bevy_xcap.svg)](https://crates.io/crates/bevy_xcap)
+[![docs.rs](https://docs.rs/bevy_xcap/badge.svg)](https://docs.rs/bevy_xcap)
+[![License](https://img.shields.io/crates/l/bevy_xcap.svg)](https://github.com/PoHsuanLai/bevy_xcap#license)
+
 Bevy plugin for native window pixel capture via [xcap](https://github.com/nashaofu/xcap).
 
 Bevy's built-in `Screenshot` API only captures wgpu-rendered content. If your window contains native toolkit UI (Cocoa, Win32, GTK) or embedded third-party content, you need actual pixel capture of the OS window. `bevy_xcap` provides this with an API that mirrors Bevy's `Screenshot`.
