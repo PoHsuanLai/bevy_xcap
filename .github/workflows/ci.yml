@@ -38,7 +38,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             pkg-config libclang-dev \
-            xvfb \
+            xvfb openbox \
             libxcb1-dev libxrandr-dev libxi-dev \
             libwayland-dev libxkbcommon-dev libxkbcommon-x11-dev libegl-dev libgbm-dev \
             libasound2-dev libudev-dev \
@@ -50,8 +50,13 @@ jobs:
 
       - name: Run native capture test under xvfb
         run: |
-          xvfb-run -a -s "-screen 0 1024x768x24" \
-            cargo run --example ci_capture
+          # Start xvfb + openbox (provides EWMH _NET_CLIENT_LIST_STACKING that xcap needs)
+          Xvfb :99 -screen 0 1024x768x24 &
+          export DISPLAY=:99
+          sleep 1
+          openbox &
+          sleep 1
+          cargo run --example ci_capture
           test -s ./ci_screenshot_test.png
           echo "Screenshot captured successfully: $(stat -c%s ./ci_screenshot_test.png) bytes"
 
