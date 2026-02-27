@@ -5,10 +5,18 @@
 //! native toolkit UI (Cocoa, Win32, GTK) or embedded third-party content.
 //!
 //! ```ignore
+//! use bevy_xcap::prelude::*;
+//!
 //! commands
 //!     .spawn(NativeScreenshot::window(window_entity))
 //!     .observe(save_to_disk("screenshot.png"));
 //! ```
+
+pub mod prelude {
+    pub use crate::{
+        Captured, Capturing, NativeScreenshot, NativeScreenshotCaptured, XCapPlugin, save_to_disk,
+    };
+}
 
 use bevy::prelude::*;
 use bevy::window::RawHandleWrapper;

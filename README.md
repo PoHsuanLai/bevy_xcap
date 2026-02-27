@@ -22,7 +22,7 @@ Capture a window:
 
 ```rust
 use bevy::prelude::*;
-use bevy_xcap::{NativeScreenshot, NativeScreenshotCaptured, XCapPlugin, save_to_disk};
+use bevy_xcap::prelude::*;
 
 fn main() {
     App::new()

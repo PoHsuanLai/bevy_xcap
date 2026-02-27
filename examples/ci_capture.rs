@@ -4,7 +4,7 @@
 
 use bevy::prelude::*;
 use bevy::color::palettes::css;
-use bevy_xcap::{NativeScreenshot, NativeScreenshotCaptured, XCapPlugin};
+use bevy_xcap::prelude::*;
 
 const OUTPUT_PATH: &str = "./ci_screenshot_test.png";
 const WAIT_FRAMES: u32 = 30;

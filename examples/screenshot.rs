@@ -6,7 +6,7 @@
 use bevy::prelude::*;
 use bevy::color::palettes::css;
 use bevy::text::{TextColor, TextFont};
-use bevy_xcap::{NativeScreenshot, XCapPlugin, save_to_disk};
+use bevy_xcap::prelude::*;
 
 fn main() {
     App::new()
