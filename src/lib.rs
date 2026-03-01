@@ -1,8 +1,11 @@
-//! Native window pixel capture for Bevy via [`xcap`](https://github.com/nashaofu/xcap).
+//! Native window pixel capture for Bevy via [`async-xcap`].
 //!
 //! Bevy's built-in `Screenshot` only captures wgpu-rendered content. This
 //! crate captures actual OS window pixels — useful when the window contains
 //! native toolkit UI (Cocoa, Win32, GTK) or embedded third-party content.
+//!
+//! On macOS, uses ScreenCaptureKit for truly async capture.
+//! On Windows/Linux, wraps xcap.
 //!
 //! ```ignore
 //! use bevy_xcap::prelude::*;
@@ -19,7 +22,6 @@ pub mod prelude {
 }
 
 use bevy::prelude::*;
-use bevy::window::RawHandleWrapper;
 use std::sync::{mpsc, Mutex};
 
 #[derive(Component)]
@@ -80,24 +82,14 @@ impl Plugin for XCapPlugin {
     }
 }
 
-/// Dispatches new capture requests to background threads.
+/// Dispatches new capture requests to the async task pool.
 fn dispatch_captures(
     mut commands: Commands,
     screenshots: Query<(Entity, &NativeScreenshot), Added<NativeScreenshot>>,
-    handles: Query<&RawHandleWrapper>,
     windows: Query<&Window>,
     sender: Res<CaptureSender>,
 ) {
     for (screenshot_entity, screenshot) in &screenshots {
-        let Ok(raw_handle) = handles.get(screenshot.target) else {
-            warn!(
-                "[bevy_xcap] Target entity {:?} has no RawHandleWrapper",
-                screenshot.target
-            );
-            commands.entity(screenshot_entity).despawn();
-            continue;
-        };
-
         let window_title = windows
             .get(screenshot.target)
             .map(|w| w.title.clone())
@@ -105,14 +97,33 @@ fn dispatch_captures(
 
         commands.entity(screenshot_entity).insert(Capturing);
 
-        let raw_handle = raw_handle.clone();
         let tx = sender.0.clone();
 
-        std::thread::spawn(move || {
-            let result = capture_window(&raw_handle, window_title.as_deref());
-            let _ = tx.send((screenshot_entity, result));
-        });
+        bevy::tasks::AsyncComputeTaskPool::get()
+            .spawn(async move {
+                let result = async_capture(window_title.as_deref()).await;
+                let _ = tx.send((screenshot_entity, result));
+            })
+            .detach();
     }
+}
+
+async fn async_capture(title: Option<&str>) -> Result<(u32, u32, Vec<u8>), String> {
+    let windows = async_xcap::Window::all()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let window = if let Some(title) = title {
+        windows
+            .iter()
+            .find(|w| w.title().ok().as_deref() == Some(title))
+            .ok_or_else(|| format!("No window with title '{title}'"))?
+    } else {
+        return Err("No window title provided".into());
+    };
+
+    let image = window.capture_image().await.map_err(|e| e.to_string())?;
+    Ok((image.width(), image.height(), image.into_raw()))
 }
 
 /// Collects completed captures and triggers entity events.
@@ -139,62 +150,4 @@ fn poll_captures(mut commands: Commands, receiver: Res<CaptureReceiver>) {
             }
         }
     }
-}
-
-fn capture_window(
-    raw_handle: &RawHandleWrapper,
-    title: Option<&str>,
-) -> Result<(u32, u32, Vec<u8>), String> {
-    let all_windows =
-        xcap::Window::all().map_err(|e| format!("Failed to enumerate windows: {e}"))?;
-
-    let handle = raw_handle.get_window_handle();
-
-    // Match by native window ID (Windows/Linux)
-    if let Some(target_id) = native_window_id(handle) {
-        if let Some(w) = all_windows.iter().find(|w| w.id().ok() == Some(target_id)) {
-            return capture_xcap_window(w);
-        }
-    }
-
-    // Fallback: match by title (macOS doesn't expose window IDs via raw handles)
-    if let Some(title) = title {
-        if let Some(w) = all_windows
-            .iter()
-            .find(|w| w.title().ok().as_deref() == Some(title))
-        {
-            return capture_xcap_window(w);
-        }
-    }
-
-    Err("No matching xcap window found".to_string())
-}
-
-fn capture_xcap_window(window: &xcap::Window) -> Result<(u32, u32, Vec<u8>), String> {
-    let image = window
-        .capture_image()
-        .map_err(|e| format!("Capture failed: {e}"))?;
-
-    let width = image.width();
-    let height = image.height();
-    let rgba = image.into_raw();
-
-    Ok((width, height, rgba))
-}
-
-fn native_window_id(handle: raw_window_handle::RawWindowHandle) -> Option<u32> {
-    #[cfg(target_os = "windows")]
-    if let raw_window_handle::RawWindowHandle::Win32(h) = handle {
-        return Some(h.hwnd.get() as u32);
-    }
-
-    #[cfg(target_os = "linux")]
-    match handle {
-        raw_window_handle::RawWindowHandle::Xlib(h) => return Some(h.window as u32),
-        raw_window_handle::RawWindowHandle::Xcb(h) => return Some(h.window.get()),
-        _ => {}
-    }
-
-    let _ = handle;
-    None
 }
